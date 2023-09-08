@@ -996,6 +996,7 @@ extern struct daemon {
   struct naptr *naptr;
   struct txt_record *txt, *rr;
   struct ptr_record *ptr;
+  struct ptr_record * intercept_wlist;  // offset 104; XQ405  option intercept-white-list
   struct host_record *host_records, *host_records_tail;
   struct cname *cnames;
   struct auth_zone *auth_zones;
@@ -1136,7 +1137,10 @@ extern struct daemon {
   /* file for packet dumps. */
   int dumpfd;
 #endif
+  char * intercept_ipaddr;  // offset 1792; XQ400   option intercept-ip-address
+  int is_intercept;         // offset 1800; 0 = disabled, 1 = enabled (file: "/tmp/state/dns_intercept")
 } *daemon;
+// struct size = 0x710 = 1808
 
 /* cache.c */
 void cache_init(void);

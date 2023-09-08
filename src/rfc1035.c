@@ -929,6 +929,19 @@ unsigned int extract_request(struct dns_header *header, size_t qlen, char *name,
   return F_QUERY;
 }
 
+size_t check_dns_wlist(const char * name)
+{
+  struct ptr_record * ptr;
+  for ( ptr = daemon->intercept_wlist; ; ptr = ptr->next ) {
+    if ( !ptr )
+      break;
+    
+    if ( hostname_isequal(name, ptr->name) )
+      return 1;
+  }
+  return 0;
+}
+
 size_t setup_reply(struct dns_header *header, size_t qlen,
 		struct all_addr *addrp, unsigned int flags, unsigned long ttl)
 {
@@ -975,6 +988,31 @@ size_t setup_reply(struct dns_header *header, size_t qlen,
 	  add_resource_record(header, NULL, NULL, sizeof(struct dns_header), &p, ttl, NULL, T_AAAA, C_IN, "6", addrp);
 	}
 #endif
+    }
+  else if (daemon->intercept_ipaddr)
+    {
+      if ( !daemon->is_intercept ) {
+        my_syslog(7, "set intercept flag");
+        FILE * file = creat("/tmp/state/dns_intercept", 0x80000);
+        if ( file == -1 )
+          my_syslog(7, "set intercept flag failed: %s", strerror(errno));
+        else
+          close(file);
+        daemon->is_intercept = 1;  //*(_DWORD *)(dnsmasq_daemon + 1800) = 1;
+      }
+      int hr = check_dns_wlist(daemon->namebuff);
+      if ( hr )
+      {
+        SET_RCODE(header, REFUSED);  // REFUSED = 5
+      }
+      else
+      {
+        SET_RCODE(header, NOERROR);
+        header->ancount = htons(1);
+        header->hb3 |= HB3_AA;
+        unsigned long _ttl = 1;
+        add_resource_record(header, NULL, NULL, sizeof(struct dns_header), &p, _ttl, NULL, T_A, C_IN, "4", addrp);
+      }
     }
   else /* nowhere to forward to */
     {

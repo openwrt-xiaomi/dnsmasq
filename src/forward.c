@@ -1245,6 +1245,12 @@ void reply_query(int fd, int family, time_t now)
 	{
 	  header->id = htons(forward->orig_id);
 	  header->hb4 |= HB4_RA; /* recursion if available */
+	  if ( daemon->is_intercept )  //*(_DWORD *)(dnsmasq_daemon + 1800)
+	  {
+	    if ( unlink("/tmp/state/dns_intercept") == -1 )
+	      my_syslog(7, "clean intercept flag failed: %s", strerror(errno));
+	    daemon->is_intercept = 0;
+	  }
 #ifdef HAVE_DNSSEC
 	  /* We added an EDNSO header for the purpose of getting DNSSEC RRs, and set the value of the UDP payload size
 	     greater than the no-EDNS0-implied 512 to have space for the RRSIGS. If, having stripped them and the EDNS0

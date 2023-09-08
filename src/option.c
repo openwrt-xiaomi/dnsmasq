@@ -337,6 +337,8 @@ static const struct myoption opts[] =
     { "dhcp-rapid-commit", 0, 0, LOPT_RAPID_COMMIT },
     { "dumpfile", 1, 0, LOPT_DUMPFILE },
     { "dumpmask", 1, 0, LOPT_DUMPMASK },
+    { "intercept-ip-address", 2, 0, LOPT_XQ400 },
+    { "intercept-white-list", 2, 0, LOPT_XQ405 },
     { NULL, 0, 0, 0 }
   };
 
@@ -515,6 +517,8 @@ static struct {
   { LOPT_RAPID_COMMIT, OPT_RAPID_COMMIT, NULL, gettext_noop("Enables DHCPv4 Rapid Commit option."), NULL },
   { LOPT_DUMPFILE, ARG_ONE, "<path>", gettext_noop("Path to debug packet dump file"), NULL },
   { LOPT_DUMPMASK, ARG_ONE, "<hex>", gettext_noop("Mask which packets to dump"), NULL },
+  { LOPT_XQ400, ARG_DUP, "<ipaddr>", gettext_noop("Set dns intercept to which ip address"), NULL },
+  { LOPT_XQ405, ARG_DUP, "<name>", gettext_noop("Specify Domain records."), NULL },
   { 0, 0, NULL, NULL, NULL }
 }; 
 
@@ -4007,6 +4011,38 @@ err:
 	break;
       }
 
+    case LOPT_XQ400:  // intercept-ip-address
+    {
+      if (!arg)
+        ret_err(_("Need an ip!"));
+
+      daemon->intercept_ipaddr = opt_malloc(16);
+      int m = inet_pton(AF_INET, arg, daemon->intercept_ipaddr);
+      if (!m)
+        ret_err(_("Only ipv4 address!"));
+
+      break;  
+    }
+
+    case LOPT_XQ405:  // intercept-white-list
+    {
+      char buf[128];
+      memset(buf, 0, sizeof(buf));
+      FILE * file = fopen(arg, "r");
+      if ( file ) {
+        while ( fscanf(file, "%s", buf) != -1 ) {
+          struct ptr_record * prec = opt_malloc(24);
+          prec->next = daemon->intercept_wlist;
+          daemon->intercept_wlist = prec;
+          char * dns_name = (size_t *)opt_malloc(128);
+          prec->name = dns_name;
+          memcpy(dns_name, buf, sizeof(buf));
+        }
+        fclose(file);
+      }
+      break;  
+    }
+    
     case LOPT_CAA: /* --caa-record */
       {
        	struct txt_record *new;
